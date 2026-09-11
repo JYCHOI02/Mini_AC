@@ -1,0 +1,33 @@
+{% include 'partials/_nav.html' %}
+
+<div style="max-width: 400px; margin: 50px auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+  <h2>📝 회원가입</h2>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <p style="color: red; font-size: 14px;">{{ message }}</p>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <form action="{{ url_for('auth.register') }}" method="POST">
+    <div style="margin-bottom: 15px;">
+      <label for="username" style="display: block; margin-bottom: 5px;">아이디</label>
+      <input type="text" id="username" name="username" required style="width: 100%; padding: 8px; box-sizing: border-box;">
+    </div>
+
+    <div style="margin-bottom: 15px;">
+      <label for="password" style="display: block; margin-bottom: 5px;">비밀번호</label>
+      <input type="password" id="password" name="password" required style="width: 100%; padding: 8px; box-sizing: border-box;">
+    </div>
+
+    <button type="submit" style="width: 100%; padding: 10px; background-color: #10B981; color: white; border: none; border-radius: 4px; cursor: pointer;">
+      가입하기 (기본: 일반 유저)
+    </button>
+  </form>
+
+  <p style="margin-top: 15px; font-size: 14px; text-align: center;">
+    이미 계정이 있으신가요? <a href="{{ url_for('auth.login') }}">로그인</a>
+  </p>
+</div>

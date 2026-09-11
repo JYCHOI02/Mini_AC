@@ -5,6 +5,8 @@ app 과 분리해 두면 models·controllers 어디서든 import 해도
 """
 from flask_jwt_extended import JWTManager
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager
 
 db = SQLAlchemy()
 jwt = JWTManager()
+login_manager = LoginManager()

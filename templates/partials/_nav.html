@@ -11,6 +11,11 @@
         <a href="/" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition">게시판</a>
         <a href="/dashboard" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition">보안 대시보드</a>
         <a href="/public-posts" class="px-3 py-2 rounded-lg text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition">부산 테마여행</a>
+        
+        <!-- 접근 제어 테스트 링크 추가 -->
+        <a href="{{ url_for('cafe.gold_page') }}" class="px-3 py-2 rounded-lg text-sm font-semibold text-amber-600 bg-amber-50 hover:bg-amber-100 transition">⭐ 골드그룹</a>
+        <a href="{{ url_for('cafe.admin_page') }}" class="px-3 py-2 rounded-lg text-sm font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 transition">⚙️ 관리자</a>
+
         <span id="auth-nav" class="flex items-center space-x-2 ml-2"></span>
       </nav>
 
@@ -32,6 +37,11 @@
       <a href="/" class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100">게시판</a>
       <a href="/dashboard" class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100">보안 대시보드</a>
       <a href="/public-posts" class="block px-3 py-2 rounded-lg text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100">부산 테마여행</a>
+      
+      <!-- 모바일 접근 제어 테스트 링크 추가 -->
+      <a href="{{ url_for('cafe.gold_page') }}" class="block px-3 py-2 rounded-lg text-sm font-semibold text-amber-600 bg-amber-50 hover:bg-amber-100">⭐ 골드그룹</a>
+      <a href="{{ url_for('cafe.admin_page') }}" class="block px-3 py-2 rounded-lg text-sm font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100">⚙️ 관리자</a>
+
       <span id="auth-nav-mobile" class="block px-3 py-2 space-x-2"></span>
     </nav>
   </div>
