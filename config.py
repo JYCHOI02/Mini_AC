@@ -8,30 +8,30 @@ from datetime import timedelta
 
 from dotenv import load_dotenv
 
-load_dotenv()  # .env → 환경변수 (import 시점 1회)
+load_dotenv()
 
 
 class Config:
-  # ── 데이터베이스 (도커 MySQL) ──
-  SQLALCHEMY_DATABASE_URI = os.environ.get(
-      'DATABASE_URL',
-      # 기본값에는 비밀번호를 두지 않는다 — 반드시 .env 의 DATABASE_URL 을 쓴다
-      'mysql+pymysql://<user>:<password>@localhost:3306/my_new_board_db',
-  )
-  SQLALCHEMY_TRACK_MODIFICATIONS = False
+    # ── 세션 암호화 키 (Flask-Login 필수) ──
+    SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-change-this')
 
-  # ── 로그인 토큰 ──
-  JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'dev-only-change-me')
-  JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=2)
+    # ── 데이터베이스 (SQLite) ──
+    SQLALCHEMY_DATABASE_URI = os.environ.get(
+        'DATABASE_URL',
+        'sqlite:///my_new_board.db',
+    )
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-  # ── 보안 이벤트 REST (n8n 이 호출) ──
-  # 값이 비어 있으면 POST 는 항상 401 (fail-closed: 실수로 열어두지 않는다)
-  SECURITY_API_KEY = os.environ.get('SECURITY_API_KEY', '')
-  # 거부(deny) 시 게시판에 '보안' 공지글 자동 등록
-  AUTO_POST_ON_DENY = os.environ.get('AUTO_POST_ON_DENY', '0') == '1'
+    # ── 로그인 토큰 ──
+    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'dev-only-change-me')
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=2)
 
-  # ── 공공데이터(부산 테마여행) ──
-  PUBLIC_API_KEY = os.environ.get('PUBLIC_API_KEY')
-  PUBLIC_API_URL = (
-      'http://apis.data.go.kr/6260000/RecommendedService/getRecommendedKr'
-  )
+    # ── 보안 이벤트 REST ──
+    SECURITY_API_KEY = os.environ.get('SECURITY_API_KEY', '')
+    AUTO_POST_ON_DENY = os.environ.get('AUTO_POST_ON_DENY', '0') == '1'
+
+    # ── 공공데이터 ──
+    PUBLIC_API_KEY = os.environ.get('PUBLIC_API_KEY')
+    PUBLIC_API_URL = (
+        'http://apis.data.go.kr/6260000/RecommendedService/getRecommendedKr'
+    )

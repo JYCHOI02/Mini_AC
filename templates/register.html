@@ -1,33 +1,126 @@
-{% include 'partials/_nav.html' %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>회원가입 — 모던 게시판</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
 
-<div style="max-width: 400px; margin: 50px auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-  <h2>📝 회원가입</h2>
+  <!-- 공통 헤더 네비게이션 -->
+  {% include 'partials/_nav.html' %}
 
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-        <p style="color: red; font-size: 14px;">{{ message }}</p>
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
+  <!-- 메인 컨테이너 -->
+  <main class="flex-1 flex items-center justify-center px-4 py-12">
+    <div class="w-full max-w-md">
 
-  <form action="{{ url_for('auth.register') }}" method="POST">
-    <div style="margin-bottom: 15px;">
-      <label for="username" style="display: block; margin-bottom: 5px;">아이디</label>
-      <input type="text" id="username" name="username" required style="width: 100%; padding: 8px; box-sizing: border-box;">
+      <!-- 플래시 메시지 -->
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          <div class="mb-6 space-y-2">
+            {% for message in messages %}
+              <div class="p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl text-sm flex items-center gap-2 shadow-sm">
+                <span>⚠️</span>
+                <span>{{ message }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <!-- 회원가입 카드 -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <!-- 카드 헤더 -->
+        <div class="text-center mb-8">
+          <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 text-2xl mb-3 shadow-inner">
+            📝
+          </div>
+          <h1 class="text-2xl font-bold text-gray-900">회원가입</h1>
+          <p class="text-sm text-gray-500 mt-1">간편하게 계정을 생성하고 게시판을 이용해 보세요.</p>
+        </div>
+
+        <!-- 회원가입 폼 -->
+        <form id="register-form" onsubmit="handleFormRegister(event)" class="space-y-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5" for="reg-username">사용할 아이디</label>
+            <input type="text" id="reg-username" required placeholder="영문/숫자 아이디 입력"
+                   class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition bg-gray-50/30">
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5" for="reg-password">비밀번호</label>
+            <input type="password" id="reg-password" required placeholder="비밀번호 입력"
+                   class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition bg-gray-50/30">
+            <p class="text-[11px] text-gray-400 mt-1">가입 시 기본 등급(Role: 0, 일반 회원)으로 등록됩니다.</p>
+          </div>
+
+          <button type="submit" id="reg-submit-btn"
+                  class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-xl text-sm transition shadow-sm hover:shadow flex items-center justify-center gap-2 mt-2">
+            <span>회원가입 완료</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+          </button>
+        </form>
+
+        <!-- 카드 푸터 링크 -->
+        <div class="mt-8 pt-6 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-2">
+          <span>이미 계정이 있으신가요?</span>
+          <a href="{{ url_for('auth.login') }}" class="font-semibold text-indigo-600 hover:text-indigo-700 hover:underline">
+            로그인 화면으로 이동 →
+          </a>
+        </div>
+      </div>
+
+      <!-- 뒤로가기 링크 -->
+      <div class="text-center mt-6">
+        <a href="/" class="text-xs text-gray-500 hover:text-gray-700 transition inline-flex items-center gap-1">
+          ← 메인 게시판으로 돌아가기
+        </a>
+      </div>
+
     </div>
+  </main>
 
-    <div style="margin-bottom: 15px;">
-      <label for="password" style="display: block; margin-bottom: 5px;">비밀번호</label>
-      <input type="password" id="password" name="password" required style="width: 100%; padding: 8px; box-sizing: border-box;">
-    </div>
+  <script>
+    async function handleFormRegister(e) {
+      e.preventDefault();
+      const btn = document.getElementById('reg-submit-btn');
+      const username = document.getElementById('reg-username').value.trim();
+      const password = document.getElementById('reg-password').value;
 
-    <button type="submit" style="width: 100%; padding: 10px; background-color: #10B981; color: white; border: none; border-radius: 4px; cursor: pointer;">
-      가입하기 (기본: 일반 유저)
-    </button>
-  </form>
+      if (!username || !password) {
+        alert('아이디와 비밀번호를 모두 입력해 주세요.');
+        return;
+      }
 
-  <p style="margin-top: 15px; font-size: 14px; text-align: center;">
-    이미 계정이 있으신가요? <a href="{{ url_for('auth.login') }}">로그인</a>
-  </p>
-</div>
+      btn.disabled = true;
+      btn.classList.add('opacity-75', 'cursor-not-allowed');
+
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({username, password})
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          alert('회원가입이 완료되었습니다! 로그인 화면으로 이동합니다.');
+          window.location.href = '{{ url_for("auth.login") }}';
+        } else {
+          alert(data.message || '회원가입에 실패했습니다.');
+        }
+      } catch (err) {
+        console.error('회원가입 에러:', err);
+        alert('서버와 통신 중 오류가 발생했습니다.');
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('opacity-75', 'cursor-not-allowed');
+      }
+    }
+  </script>
+
+</body>
+</html>

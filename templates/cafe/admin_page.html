@@ -1,51 +1,148 @@
-{% include 'partials/_nav.html' %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚙️ 관리자 페이지 — 회원 관리</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
 
-<div style="padding: 20px;">
-  <h2>⚙️ 관리자 페이지 (회원 관리)</h2>
-  <p>회원 정보를 불러와 등급 수정(골드 지정 등) 및 삭제를 수행합니다.</p>
+  <!-- 공통 헤더 네비게이션 -->
+  {% include 'partials/_nav.html' %}
 
-  <table border="1" cellpadding="8" style="border-collapse: collapse; width: 100%;">
-    <thead>
-      <tr style="background-color: #f2f2f2;">
-        <th>ID</th>
-        <th>사용자명</th>
-        <th>현재 등급</th>
-        <th>등급 변경</th>
-        <th>계정 삭제</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for u in users %}
-      <tr>
-        <td>{{ u.id }}</td>
-        <td>{{ u.username }}</td>
-        <td>
-          {% if u.role == Role.USER %}0 (일반 유저)
-          {% elif u.role == Role.GOLD %}1 (골드 / 중간관리자)
-          {% elif u.role == Role.ADMIN %}2 (관리자)
-          {% endif %}
-        </td>
-        <td>
-          <form action="{{ url_for('cafe.update_user_role', user_id=u.id) }}" method="POST" style="display:inline;">
-            <select name="role">
-              <option value="0" {% if u.role == 0 %}selected{% endif %}>0: 일반 유저</option>
-              <option value="1" {% if u.role == 1 %}selected{% endif %}>1: 골드 (중간관리자)</option>
-              <option value="2" {% if u.role == 2 %}selected{% endif %}>2: 관리자</option>
-            </select>
-            <button type="submit">변경</button>
-          </form>
-        </td>
-        <td>
-          {% if u.id != current_user.id %}
-          <form action="{{ url_for('cafe.delete_user', user_id=u.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('정말 삭제하시겠습니까?');">
-            <button type="submit" style="color: red;">삭제</button>
-          </form>
-          {% else %}
-          (본인)
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+  <!-- 메인 컨테이너 -->
+  <main class="max-w-5xl mx-auto px-4 py-8 flex-1 w-full">
+
+    <!-- 상단 페이지 헤더 -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="p-2 bg-rose-100 text-rose-700 rounded-lg text-lg">⚙️</span>
+          <h1 class="text-2xl font-bold text-gray-900">관리자 페이지 (회원 관리)</h1>
+        </div>
+        <p class="text-sm text-gray-500 mt-1">등록된 전체 회원 정보를 조회하고 권한(Role) 변경 및 계정 관리를 수행합니다.</p>
+      </div>
+      <a href="/" class="inline-flex items-center text-sm text-gray-600 hover:text-indigo-600 font-medium transition">
+        ← 메인 게시판으로 이동
+      </a>
+    </div>
+
+    <!-- 작업 알림 플래시 메시지 -->
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="mb-6 space-y-2">
+          {% for message in messages %}
+            <div class="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm rounded-xl flex items-center gap-2 shadow-sm">
+              <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <span>{{ message }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- 통계 카드 그리드 -->
+    {% set total_count = users|length %}
+    {% set admin_count = users|selectattr('role', 'equalto', 2)|list|length %}
+    {% set gold_count = users|selectattr('role', 'equalto', 1)|list|length %}
+    {% set user_count = users|selectattr('role', 'equalto', 0)|list|length %}
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <div class="text-xs font-medium text-gray-500">전체 회원</div>
+        <div class="text-2xl font-bold text-gray-900 mt-1">{{ total_count }}<span class="text-sm font-normal text-gray-500 ml-1">명</span></div>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm border-l-4 border-rose-500 p-5">
+        <div class="text-xs font-medium text-rose-600">관리자 (ADMIN)</div>
+        <div class="text-2xl font-bold text-rose-700 mt-1">{{ admin_count }}<span class="text-sm font-normal text-gray-500 ml-1">명</span></div>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm border-l-4 border-amber-500 p-5">
+        <div class="text-xs font-medium text-amber-600">골드 (GOLD)</div>
+        <div class="text-2xl font-bold text-amber-700 mt-1">{{ gold_count }}<span class="text-sm font-normal text-gray-500 ml-1">명</span></div>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm border-l-4 border-emerald-500 p-5">
+        <div class="text-xs font-medium text-emerald-600">일반 회원 (USER)</div>
+        <div class="text-2xl font-bold text-emerald-700 mt-1">{{ user_count }}<span class="text-sm font-normal text-gray-500 ml-1">명</span></div>
+      </div>
+    </div>
+
+    <!-- 회원 목록 테이블 카드 -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <h2 class="text-base font-bold text-gray-900">회원 계정 및 권한 목록</h2>
+        <span class="text-xs text-gray-400">총 {{ total_count }}명의 계정</span>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-gray-50/80 text-xs font-semibold text-gray-500 border-b border-gray-100">
+              <th class="py-3.5 px-6">ID</th>
+              <th class="py-3.5 px-6">사용자명</th>
+              <th class="py-3.5 px-6">현재 등급</th>
+              <th class="py-3.5 px-6">등급 변경</th>
+              <th class="py-3.5 px-6 text-right">계정 관리</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100 text-sm text-gray-700">
+            {% for u in users %}
+            <tr class="hover:bg-gray-50/50 transition">
+              <td class="py-4 px-6 font-mono text-xs text-gray-500">#{{ u.id }}</td>
+              <td class="py-4 px-6 font-medium text-gray-900 flex items-center gap-2">
+                <span>{{ u.username }}</span>
+                {% if u.id == current_user.id %}
+                  <span class="bg-indigo-50 text-indigo-700 border border-indigo-200 text-[11px] px-2 py-0.5 rounded-md font-semibold">나</span>
+                {% endif %}
+              </td>
+              <td class="py-4 px-6">
+                {% if u.role == Role.ADMIN %}
+                  <span class="inline-flex items-center gap-1 bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-full text-xs font-semibold">
+                    <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> 2 (ADMIN)
+                  </span>
+                {% elif u.role == Role.GOLD %}
+                  <span class="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full text-xs font-semibold">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> 1 (GOLD)
+                  </span>
+                {% else %}
+                  <span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full text-xs font-semibold">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> 0 (USER)
+                  </span>
+                {% endif %}
+              </td>
+              <td class="py-4 px-6">
+                <form action="{{ url_for('cafe.update_user_role', user_id=u.id) }}" method="POST" class="flex items-center gap-2">
+                  <select name="role" class="border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="0" {% if u.role == 0 %}selected{% endif %}>0: 일반 유저</option>
+                    <option value="1" {% if u.role == 1 %}selected{% endif %}>1: 골드 (중간관리자)</option>
+                    <option value="2" {% if u.role == 2 %}selected{% endif %}>2: 관리자</option>
+                  </select>
+                  <button type="submit" class="bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white border border-indigo-200 px-3 py-1.5 rounded-lg text-xs font-semibold transition">
+                    변경
+                  </button>
+                </form>
+              </td>
+              <td class="py-4 px-6 text-right">
+                {% if u.id != current_user.id %}
+                  <form action="{{ url_for('cafe.delete_user', user_id=u.id) }}" method="POST" class="inline" onsubmit="return confirm('정말 \'{{ u.username }}\' 계정을 삭제하시겠습니까?');">
+                    <button type="submit" class="bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white border border-rose-200 px-3 py-1.5 rounded-lg text-xs font-semibold transition">
+                      삭제
+                    </button>
+                  </form>
+                {% else %}
+                  <span class="text-xs text-gray-400 px-2 py-1 bg-gray-100 rounded-md">삭제 불가</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+</body>
+</html>

@@ -14,6 +14,19 @@
     <!-- Main Container -->
     <main class="max-w-4xl mx-auto px-4 py-6 flex-1 w-full">
         
+        <!-- DB 접속 유저 권한 상태 배너 (로그인 시 상단 출력) -->
+        <div id="user-role-card" class="hidden mb-6 bg-white p-5 rounded-xl shadow-sm border border-indigo-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-sm font-semibold text-gray-500">현재 DB 세션 접속 정보</h2>
+                    <p class="text-lg font-bold text-gray-900 mt-0.5">
+                        <span id="card-username" class="text-indigo-600"></span> 님 환영합니다!
+                    </p>
+                </div>
+                <div id="card-role-badge"></div>
+            </div>
+        </div>
+
         <!-- 검색 및 필터 바 -->
         <div class="bg-white p-4 rounded-xl shadow-sm mb-6 flex flex-col md:flex-row gap-3 justify-between items-center">
             <div class="flex gap-2 w-full md:w-auto">
@@ -34,7 +47,7 @@
             <!-- 동적 게시글 카드 -->
         </div>
 
-        <!-- 더보기 버튼 (커서 페이징) -->
+        <!-- 더보기 버튼 -->
         <div id="load-more-container" class="mt-6 text-center hidden">
             <button onclick="loadMorePosts()" class="bg-white border border-gray-300 px-6 py-2 rounded-lg text-sm font-medium hover:bg-gray-100 transition shadow-sm">더보기</button>
         </div>
@@ -81,6 +94,7 @@
         let currentCursor = null;
         let isAuthModeLogin = true;
         let currentUsername = localStorage.getItem('username');
+        let currentRole = localStorage.getItem('role');
         let token = localStorage.getItem('token');
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -88,20 +102,65 @@
             loadPosts(true);
         });
 
+        // Role 값(0, 1, 2)에 맞는 뱃지 HTML 생성
+        function getRoleBadge(role) {
+            const r = parseInt(role);
+            if (r === 2) {
+                return `<span class="bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-full text-xs font-bold">권한: 2 (ADMIN)</span>`;
+            } else if (r === 1) {
+                return `<span class="bg-amber-100 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full text-xs font-bold">권한: 1 (GOLD)</span>`;
+            }
+            return `<span class="bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full text-xs font-bold">권한: 0 (USER)</span>`;
+        }
+
         function updateAuthUI() {
             const nav = document.getElementById('auth-nav');
+            const navMobile = document.getElementById('auth-nav-mobile');
             const writeBtn = document.getElementById('write-btn');
-            if (token && currentUsername) {
+            const roleCard = document.getElementById('user-role-card');
+            const cardUsername = document.getElementById('card-username');
+            const cardRoleBadge = document.getElementById('card-role-badge');
+
+            if (currentUsername && currentRole !== null) {
+                const badge = getRoleBadge(currentRole);
+
+                // 데스크톱 헤더 UI
                 nav.innerHTML = `
-                    <span class="text-sm font-medium text-gray-700">안녕하세요, <strong class="text-indigo-600">${currentUsername}</strong>님</span>
-                    <button onclick="logout()" class="text-sm text-red-500 hover:underline">로그아웃</button>
+                    <span class="text-sm font-medium text-gray-700 flex items-center gap-2">
+                        <strong class="text-indigo-600">${currentUsername}</strong>님 ${badge}
+                    </span>
+                    <button onclick="logout()" class="text-sm text-red-500 font-medium hover:underline ml-2">로그아웃</button>
                 `;
+
+                // 모바일 헤더 UI
+                if (navMobile) {
+                    navMobile.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm font-medium text-gray-700">${currentUsername}님</span>
+                            ${badge}
+                        </div>
+                        <button onclick="logout()" class="block w-full text-left text-sm text-red-500 font-medium pt-1">로그아웃</button>
+                    `;
+                }
+
+                // 메인 페이지 유저 카드 표시
+                cardUsername.innerText = currentUsername;
+                cardRoleBadge.innerHTML = badge;
+                roleCard.classList.remove('hidden');
+
                 writeBtn.classList.remove('hidden');
             } else {
                 nav.innerHTML = `
                     <button onclick="openAuthModal(true)" class="text-sm text-indigo-600 font-medium hover:underline">로그인</button>
                     <button onclick="openAuthModal(false)" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-indigo-700 transition">회원가입</button>
                 `;
+                if (navMobile) {
+                    navMobile.innerHTML = `
+                        <button onclick="openAuthModal(true)" class="block text-sm text-indigo-600 font-medium">로그인</button>
+                        <button onclick="openAuthModal(false)" class="block text-sm font-medium text-gray-700">회원가입</button>
+                    `;
+                }
+                roleCard.classList.add('hidden');
                 writeBtn.classList.add('hidden');
             }
         }
@@ -120,54 +179,48 @@
             if (category) url += `&category=${encodeURIComponent(category)}`;
             if (currentCursor) url += `&cursor=${currentCursor}`;
 
-            const res = await fetch(url);
-            const data = await res.json();
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
 
-            const container = document.getElementById('posts-container');
-            if (data.posts.length === 0 && reset) {
-                container.innerHTML = `<div class="text-center py-12 text-gray-400 bg-white rounded-xl shadow-sm">게시글이 없습니다.</div>`;
-                document.getElementById('load-more-container').classList.add('hidden');
-                return;
-            }
+                const container = document.getElementById('posts-container');
+                if (data.posts.length === 0 && reset) {
+                    container.innerHTML = `<div class="text-center py-12 text-gray-400 bg-white rounded-xl shadow-sm">게시글이 없습니다.</div>`;
+                    document.getElementById('load-more-container').classList.add('hidden');
+                    return;
+                }
 
-            data.posts.forEach(post => {
-                const isOwner = currentUsername && post.author === currentUsername;
-                const div = document.createElement('div');
-                div.className = "bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition";
-                div.innerHTML = `
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="text-xs font-semibold px-2.5 py-1 rounded-full ${post.category === '공지' ? 'bg-red-100 text-red-600' : 'bg-indigo-50 text-indigo-600'}">${post.category}</span>
-                        <span class="text-xs text-gray-400">작성자: ${post.author}</span>
-                    </div>
-                    <h3 class="text-lg font-bold text-gray-900 mb-1">${escapeHtml(post.title)}</h3>
-                    <p class="text-sm text-gray-600 whitespace-pre-line mb-4">${escapeHtml(post.content)}</p>
-                    ${isOwner ? `
-                        <div class="flex justify-end space-x-2">
-                            <button onclick="openEditModal(${post.id}, '${escapeAttr(post.title)}', '${escapeAttr(post.content)}', '${post.category}')" class="text-xs text-indigo-600 hover:underline">수정</button>
-                            <button onclick="deletePost(${post.id})" class="text-xs text-red-500 hover:underline">삭제</button>
+                data.posts.forEach(post => {
+                    const isOwner = currentUsername && post.author === currentUsername;
+                    const div = document.createElement('div');
+                    div.className = "bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition";
+                    div.innerHTML = `
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-xs font-semibold px-2.5 py-1 rounded-full ${post.category === '공지' ? 'bg-red-100 text-red-600' : 'bg-indigo-50 text-indigo-600'}">${post.category}</span>
+                            <span class="text-xs text-gray-400">작성자: ${post.author}</span>
                         </div>
-                    ` : ''}
-                `;
-                container.appendChild(div);
-            });
+                        <h3 class="text-lg font-bold text-gray-900 mb-1">${escapeHtml(post.title)}</h3>
+                        <p class="text-sm text-gray-600 whitespace-pre-line mb-4">${escapeHtml(post.content)}</p>
+                        ${isOwner ? `
+                            <div class="flex justify-end space-x-2">
+                                <button onclick="openEditModal(${post.id}, '${escapeAttr(post.title)}', '${escapeAttr(post.content)}', '${post.category}')" class="text-xs text-indigo-600 hover:underline">수정</button>
+                                <button onclick="deletePost(${post.id})" class="text-xs text-red-500 hover:underline">삭제</button>
+                            </div>
+                        ` : ''}
+                    `;
+                    container.appendChild(div);
+                });
 
-            currentCursor = data.next_cursor;
-            const loadMore = document.getElementById('load-more-container');
-            if (data.has_more) {
-                loadMore.classList.remove('hidden');
-            } else {
-                loadMore.classList.add('hidden');
+                currentCursor = data.next_cursor;
+                const loadMore = document.getElementById('load-more-container');
+                if (data.has_more) {
+                    loadMore.classList.remove('hidden');
+                } else {
+                    loadMore.classList.add('hidden');
+                }
+            } catch (e) {
+                console.error("게시글 로드 실패:", e);
             }
-        }
-
-        function resetAndLoad() {
-            document.getElementById('search-input').value = '';
-            document.getElementById('filter-category').value = '전체';
-            loadPosts(true);
-        }
-
-        function loadMorePosts() {
-            loadPosts(false);
         }
 
         // 인증 모달 제어
@@ -195,10 +248,14 @@
 
             if (res.ok) {
                 if (isAuthModeLogin) {
-                    token = data.access_token;
-                    currentUsername = data.username;
+                    token = data.access_token || 'authenticated';
+                    currentUsername = username;
+                    currentRole = data.role !== undefined ? data.role : 0;
+                    
                     localStorage.setItem('token', token);
                     localStorage.setItem('username', currentUsername);
+                    localStorage.setItem('role', currentRole);
+                    
                     updateAuthUI();
                     closeAuthModal();
                     loadPosts(true);
@@ -207,17 +264,24 @@
                     openAuthModal(true);
                 }
             } else {
-                alert(data.msg || '오류가 발생했습니다.');
+                alert(data.message || data.msg || '오류가 발생했습니다.');
             }
         }
 
-        function logout() {
+        async function logout() {
+            try {
+                await fetch('/api/auth/logout', { method: 'POST' });
+            } catch (e) {
+                console.error("로그아웃 실패:", e);
+            }
             localStorage.removeItem('token');
             localStorage.removeItem('username');
+            localStorage.removeItem('role');
             token = null;
             currentUsername = null;
+            currentRole = null;
             updateAuthUI();
-            loadPosts(true);
+            window.location.href = '/';
         }
 
         // 글 작성/수정 모달 제어

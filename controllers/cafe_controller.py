@@ -6,6 +6,10 @@ from utils.decorators import role_required
 
 cafe_bp = Blueprint('cafe', __name__)
 
+@cafe_bp.route('/')
+def index():
+    return render_template('index.html')
+
 # 1) 골드그룹 전용 페이지 (Role >= 1)
 @cafe_bp.route('/gold')
 @role_required(Role.GOLD)

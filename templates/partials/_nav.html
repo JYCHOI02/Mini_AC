@@ -12,11 +12,12 @@
         <a href="/dashboard" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition">보안 대시보드</a>
         <a href="/public-posts" class="px-3 py-2 rounded-lg text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition">부산 테마여행</a>
         
-        <!-- 접근 제어 테스트 링크 추가 -->
+        <!-- 접근 제어 테스트 링크 -->
         <a href="{{ url_for('cafe.gold_page') }}" class="px-3 py-2 rounded-lg text-sm font-semibold text-amber-600 bg-amber-50 hover:bg-amber-100 transition">⭐ 골드그룹</a>
         <a href="{{ url_for('cafe.admin_page') }}" class="px-3 py-2 rounded-lg text-sm font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 transition">⚙️ 관리자</a>
 
-        <span id="auth-nav" class="flex items-center space-x-2 ml-2"></span>
+        <!-- 인증 및 DB 권한 상태 표시 래퍼 -->
+        <span id="auth-nav" class="flex items-center space-x-2 ml-2 border-l pl-3 border-gray-200"></span>
       </nav>
 
       <!-- 햄버거 버튼 (md 미만에서만 보임) -->
@@ -38,41 +39,116 @@
       <a href="/dashboard" class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100">보안 대시보드</a>
       <a href="/public-posts" class="block px-3 py-2 rounded-lg text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100">부산 테마여행</a>
       
-      <!-- 모바일 접근 제어 테스트 링크 추가 -->
+      <!-- 모바일 접근 제어 테스트 링크 -->
       <a href="{{ url_for('cafe.gold_page') }}" class="block px-3 py-2 rounded-lg text-sm font-semibold text-amber-600 bg-amber-50 hover:bg-amber-100">⭐ 골드그룹</a>
       <a href="{{ url_for('cafe.admin_page') }}" class="block px-3 py-2 rounded-lg text-sm font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100">⚙️ 관리자</a>
 
-      <span id="auth-nav-mobile" class="block px-3 py-2 space-x-2"></span>
+      <div id="auth-nav-mobile" class="pt-2 border-t border-gray-100 px-3 space-y-2"></div>
     </nav>
   </div>
 </header>
 
 <script>
-  // 햄버거 토글 — 아이콘 교체 + aria-expanded 갱신(접근성)
+  // 1. 공통 로그아웃 처리 (서버 Flask 세션 + 브라우저 로컬 스토리지 완전 삭제)
+  async function globalLogout() {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (e) {
+      console.error('서버 로그아웃 요청 실패:', e);
+    }
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    localStorage.removeItem('role');
+    window.location.href = '/';
+  }
+
+  // index.html 등에서 logout() 호출 시에도 대응
+  window.logout = globalLogout;
+
+  // 2. 공통 네비게이션 헤더 인증 UI 렌더링
+  function renderGlobalNavAuth() {
+    const nav = document.getElementById('auth-nav');
+    const navMobile = document.getElementById('auth-nav-mobile');
+    if (!nav && !navMobile) return;
+
+    // index.html 메인 페이지는 자체 updateAuthUI()가 있으므로 중복 렌더링 방지
+    if (window.location.pathname === '/' && typeof updateAuthUI === 'function') {
+      return;
+    }
+
+    const username = localStorage.getItem('username');
+    const role = localStorage.getItem('role');
+
+    if (username && role !== null) {
+      const r = parseInt(role);
+      let badge = `<span class="bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-xs font-bold">권한: 0</span>`;
+      if (r === 2) {
+        badge = `<span class="bg-rose-100 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-full text-xs font-bold">권한: 2 (ADMIN)</span>`;
+      } else if (r === 1) {
+        badge = `<span class="bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full text-xs font-bold">권한: 1 (GOLD)</span>`;
+      }
+
+      if (nav) {
+        nav.innerHTML = `
+          <span class="text-sm font-medium text-gray-700 flex items-center gap-2">
+            <strong class="text-indigo-600">${username}</strong>님 ${badge}
+          </span>
+          <button onclick="globalLogout()" class="text-sm text-red-500 font-medium hover:underline ml-2">로그아웃</button>
+        `;
+      }
+      if (navMobile) {
+        navMobile.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-medium text-gray-700">${username}님</span>
+            ${badge}
+          </div>
+          <button onclick="globalLogout()" class="block w-full text-left text-sm text-red-500 font-medium pt-1">로그아웃</button>
+        `;
+      }
+    } else {
+      if (nav) {
+        nav.innerHTML = `
+          <a href="/api/auth/login" class="text-sm text-indigo-600 font-medium hover:underline">로그인</a>
+          <a href="/api/auth/register" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-indigo-700 transition">회원가입</a>
+        `;
+      }
+      if (navMobile) {
+        navMobile.innerHTML = `
+          <a href="/api/auth/login" class="block text-sm text-indigo-600 font-medium">로그인</a>
+          <a href="/api/auth/register" class="block text-sm font-medium text-gray-700">회원가입</a>
+        `;
+      }
+    }
+  }
+
+  // 3. 모바일 햄버거 메뉴 토글 및 초기화
   (function () {
     const btn = document.getElementById('nav-toggle');
     const menu = document.getElementById('mobile-menu');
     const iconOpen = document.getElementById('icon-open');
     const iconClose = document.getElementById('icon-close');
-    if (!btn || !menu) return;
 
-    btn.addEventListener('click', function () {
-      const willOpen = menu.classList.contains('hidden');
-      menu.classList.toggle('hidden', !willOpen);
-      iconOpen.classList.toggle('hidden', willOpen);
-      iconClose.classList.toggle('hidden', !willOpen);
-      btn.setAttribute('aria-expanded', String(willOpen));
-      btn.setAttribute('aria-label', willOpen ? '메뉴 닫기' : '메뉴 열기');
-    });
+    if (btn && menu) {
+      btn.addEventListener('click', function () {
+        const willOpen = menu.classList.contains('hidden');
+        menu.classList.toggle('hidden', !willOpen);
+        if (iconOpen) iconOpen.classList.toggle('hidden', willOpen);
+        if (iconClose) iconClose.classList.toggle('hidden', !willOpen);
+        btn.setAttribute('aria-expanded', String(willOpen));
+        btn.setAttribute('aria-label', willOpen ? '메뉴 닫기' : '메뉴 열기');
+      });
 
-    // 데스크톱 폭으로 넓어지면 모바일 메뉴는 닫아 둔다
-    window.addEventListener('resize', function () {
-      if (window.innerWidth >= 768 && !menu.classList.contains('hidden')) {
-        menu.classList.add('hidden');
-        iconOpen.classList.remove('hidden');
-        iconClose.classList.add('hidden');
-        btn.setAttribute('aria-expanded', 'false');
-      }
-    });
+      window.addEventListener('resize', function () {
+        if (window.innerWidth >= 768 && !menu.classList.contains('hidden')) {
+          menu.classList.add('hidden');
+          if (iconOpen) iconOpen.classList.remove('hidden');
+          if (iconClose) iconClose.classList.add('hidden');
+          btn.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+
+    // 네비게이션 헤더 UI 실행
+    renderGlobalNavAuth();
   })();
 </script>
