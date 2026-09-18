@@ -10,11 +10,28 @@
 실행:  python app.py   →  http://localhost:5000
 """
 from flask import Flask
+from sqlalchemy import inspect, text
 
 from config import Config
 from controllers import all_blueprints
 from extensions import db, jwt, login_manager
 
+
+def _ensure_schema():
+  """기존 users 표에 role 관련 컬럼이 없으면 추가(가벼운 자동 마이그레이션)."""
+  insp = inspect(db.engine)
+  if not insp.has_table('users'):
+    return
+  cols = {c['name'] for c in insp.get_columns('users')}
+  adds = {
+      'role_granted_by': "ALTER TABLE users ADD COLUMN role_granted_by VARCHAR(80) NULL",
+      'role_granted_at': "ALTER TABLE users ADD COLUMN role_granted_at DATETIME NULL",
+      'role_reason': "ALTER TABLE users ADD COLUMN role_reason VARCHAR(200) NULL",
+  }
+  with db.engine.begin() as conn:
+    for name, ddl in adds.items():
+      if name not in cols:
+        conn.execute(text(ddl))
 
 
 def create_app(config_class=Config):
@@ -32,6 +49,7 @@ def create_app(config_class=Config):
 
   with app.app_context():
     db.create_all()
+    _ensure_schema()
 
   return app
 

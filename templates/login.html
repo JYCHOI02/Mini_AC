@@ -12,46 +12,117 @@
   {% include 'partials/_nav.html' %}
 
   <!-- 메인 컨테이너 -->
-  <main class="flex-1 flex items-center justify-center px-4 py-12">
+  <main class="flex-1 flex items-center justify-center px-4 py-10">
     <div class="w-full max-w-md">
 
-      <!-- 권한 부족 / 안내 플래시 메시지 배너 -->
+      <!-- 1. 필요한 인가(권한) 상세 안내 배너 (인가 부족 시 자동 표시) -->
+      {% set req_role = request.args.get('req_role') %}
+      {% set my_role = request.args.get('my_role') %}
+
+      {% if req_role %}
+        <div class="mb-6 bg-white rounded-2xl border-2 border-amber-200 p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <span class="p-1.5 bg-amber-100 text-amber-700 rounded-lg text-base">🔒</span>
+              <h3 class="text-base font-bold text-gray-900">페이지 접근 제한 (인가 부족)</h3>
+            </div>
+            <span class="text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold">
+              기존 로그인 유지 중
+            </span>
+          </div>
+
+          <p class="text-xs text-gray-600 leading-relaxed mb-4">
+            현재 로그인된 계정은 해당 페이지의 접근 권한이 부족합니다. <strong>다른 계정으로 새로 로그인하기 전까지는 기존 로그인이 그대로 유지</strong>되며, 페이지를 이용하시려면 요구 등급 계정으로 로그인해 주세요.
+          </p>
+
+          <!-- 인가 비교 박스 -->
+          <div class="grid grid-cols-2 gap-3 p-3.5 bg-gray-50 rounded-xl border border-gray-100 text-xs mb-3">
+            <!-- 필요한 인가 -->
+            <div>
+              <span class="text-gray-400 block mb-1 font-medium">필요한 인가 등급</span>
+              {% if req_role == '2' %}
+                <span class="inline-flex items-center gap-1 bg-rose-100 text-rose-800 border border-rose-200 px-2.5 py-1 rounded-full font-bold">
+                  ⚙️ 관리자
+                </span>
+              {% elif req_role == '1' %}
+                <span class="inline-flex items-center gap-1 bg-amber-100 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-full font-bold">
+                  ⭐ 골드 이상
+                </span>
+              {% else %}
+                <span class="inline-flex items-center gap-1 bg-indigo-100 text-indigo-800 border border-indigo-200 px-2.5 py-1 rounded-full font-bold">
+                  Role: {{ req_role }} 이상
+                </span>
+              {% endif %}
+            </div>
+
+            <!-- 현재 계정의 인가 -->
+            <div>
+              <span class="text-gray-400 block mb-1 font-medium">현재 접속 중인 계정</span>
+              {% if current_user.is_authenticated %}
+                <span class="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded-full font-semibold">
+                  {{ current_user.username }} (Role: {{ current_user.role }})
+                </span>
+              {% elif my_role == '0' %}
+                <span class="inline-flex items-center gap-1 bg-gray-200 text-gray-700 border border-gray-300 px-2.5 py-1 rounded-full font-semibold">
+                  👤 Role: 0 (일반 회원)
+                </span>
+              {% else %}
+                <span class="inline-flex items-center gap-1 bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full text-[11px]">
+                  비로그인
+                </span>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- 기존 로그인 상태로 돌아가기 버튼 -->
+          <div class="text-right">
+            <a href="/" class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold hover:underline inline-flex items-center gap-1">
+              ← 기존 계정으로 계속 이용하기
+            </a>
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- 2. 플래시 메시지 배너 (추가 알림이 있을 경우) -->
       {% with messages = get_flashed_messages() %}
-        {% if messages %}
+        {% if messages and not req_role %}
           <div class="mb-6 space-y-3">
             {% for message in messages %}
-              <div class="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl flex items-start gap-3 shadow-sm animate-fade-in">
-                <div class="p-1 bg-rose-100 rounded-lg text-rose-600 shrink-0 mt-0.5">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                  </svg>
-                </div>
-                <div>
-                  <h4 class="text-sm font-bold text-rose-900">접근 권한 필요</h4>
-                  <p class="text-xs text-rose-700 mt-0.5 leading-relaxed">{{ message }}</p>
-                </div>
+              <div class="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl flex items-start gap-3 shadow-sm">
+                <span class="p-1 bg-rose-100 rounded-lg text-rose-600 shrink-0 mt-0.5">⚠️</span>
+                <p class="text-xs text-rose-700 leading-relaxed font-medium">{{ message }}</p>
               </div>
             {% endfor %}
           </div>
         {% endif %}
       {% endwith %}
 
-      <!-- 로그인 카드 -->
+      <!-- 3. 로그인 카드 -->
       <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
         <!-- 카드 헤더 -->
         <div class="text-center mb-8">
           <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 text-2xl mb-3 shadow-inner">
             🔑
           </div>
-          <h1 class="text-2xl font-bold text-gray-900">로그인</h1>
-          <p class="text-sm text-gray-500 mt-1">계정 정보를 입력하여 서비스를 이용해 주세요.</p>
+          <h1 class="text-2xl font-bold text-gray-900">
+            {% if req_role %}계정 전환 / 로그인{% else %}로그인{% endif %}
+          </h1>
+          <p class="text-sm text-gray-500 mt-1">
+            {% if req_role == '2' %}
+              관리자(Role 2) 권한을 가진 계정으로 로그인해 주세요.
+            {% elif req_role == '1' %}
+              골드(Role 1) 등급 이상 계정으로 로그인해 주세요.
+            {% else %}
+              계정 정보를 입력하여 서비스를 이용해 주세요.
+            {% endif %}
+          </p>
         </div>
 
         <!-- 로그인 폼 -->
         <form id="login-form" onsubmit="handleFormLogin(event)" class="space-y-4">
           <div>
             <label class="block text-sm font-semibold text-gray-700 mb-1.5" for="login-username">아이디</label>
-            <input type="text" id="login-username" required placeholder="아이디를 입력하세요"
+            <input type="text" id="login-username" required placeholder="새로 로그인할 아이디"
                    class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition bg-gray-50/30">
           </div>
 
@@ -59,13 +130,13 @@
             <div class="flex items-center justify-between mb-1.5">
               <label class="block text-sm font-semibold text-gray-700" for="login-password">비밀번호</label>
             </div>
-            <input type="password" id="login-password" required placeholder="비밀번호를 입력하세요"
+            <input type="password" id="login-password" required placeholder="비밀번호"
                    class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition bg-gray-50/30">
           </div>
 
           <button type="submit" id="submit-btn"
                   class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl text-sm transition shadow-sm hover:shadow flex items-center justify-center gap-2 mt-2">
-            <span>로그인하기</span>
+            <span>{% if req_role %}해당 계정으로 전환하기{% else %}로그인하기{% endif %}</span>
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
             </svg>
@@ -74,7 +145,7 @@
 
         <!-- 카드 푸터 링크 -->
         <div class="mt-8 pt-6 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-2">
-          <span>아직 회원이 아니신가요?</span>
+          <span>새로운 계정이 필요하신가요?</span>
           <a href="{{ url_for('auth.register') }}" class="font-semibold text-indigo-600 hover:text-indigo-700 hover:underline">
             새 계정 회원가입 →
           </a>
@@ -92,11 +163,7 @@
   </main>
 
   <script>
-    // 로그인 화면 진입 시 브라우저 잔여 인증 정보 초기화
-    localStorage.removeItem('token');
-    localStorage.removeItem('username');
-    localStorage.removeItem('role');
-
+    // 다른 계정으로 실제 로그인 성공하기 전까지는 기존 localStorage를 보존합니다.
     async function handleFormLogin(e) {
       e.preventDefault();
       const btn = document.getElementById('submit-btn');
@@ -120,11 +187,12 @@
         const data = await res.json();
 
         if (res.ok) {
+          // 새로운 계정으로 로그인 성공 시에만 localStorage를 새 계정으로 교체!
           localStorage.setItem('token', data.access_token || 'authenticated');
           localStorage.setItem('username', data.username);
           localStorage.setItem('role', data.role);
           
-          // 로그인 성공 시 역할(role)에 따른 분기 이동
+          // 로그인 성공 시 새 역할(role)에 따라 목적지 페이지로 이동
           if (data.role === 2) {
             window.location.href = '{{ url_for("cafe.admin_page") }}';
           } else if (data.role === 1) {

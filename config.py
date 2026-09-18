@@ -30,6 +30,12 @@ class Config:
     SECURITY_API_KEY = os.environ.get('SECURITY_API_KEY', '')
     AUTO_POST_ON_DENY = os.environ.get('AUTO_POST_ON_DENY', '0') == '1'
 
+    # ── 관리자(인가) REST (n8n·회수봇이 호출) ──
+    ADMIN_API_KEY = os.environ.get('ADMIN_API_KEY', '') or SECURITY_API_KEY
+    ADMIN_ALLOWLIST = [
+        u.strip() for u in os.environ.get('ADMIN_ALLOWLIST', '').split(',') if u.strip()
+    ]
+
     # ── 공공데이터 ──
     PUBLIC_API_KEY = os.environ.get('PUBLIC_API_KEY')
     PUBLIC_API_URL = (

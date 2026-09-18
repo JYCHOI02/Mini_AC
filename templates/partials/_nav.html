@@ -81,11 +81,11 @@
 
     if (username && role !== null) {
       const r = parseInt(role);
-      let badge = `<span class="bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-xs font-bold">권한: 0</span>`;
+      let badge = `<span class="bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-xs font-bold">일반</span>`;
       if (r === 2) {
-        badge = `<span class="bg-rose-100 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-full text-xs font-bold">권한: 2 (ADMIN)</span>`;
+        badge = `<span class="bg-rose-100 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-full text-xs font-bold">관리자</span>`;
       } else if (r === 1) {
-        badge = `<span class="bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full text-xs font-bold">권한: 1 (GOLD)</span>`;
+        badge = `<span class="bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full text-xs font-bold">골드</span>`;
       }
 
       if (nav) {

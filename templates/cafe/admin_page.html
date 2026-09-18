@@ -100,15 +100,15 @@
               <td class="py-4 px-6">
                 {% if u.role == Role.ADMIN %}
                   <span class="inline-flex items-center gap-1 bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-full text-xs font-semibold">
-                    <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> 2 (ADMIN)
+                    <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> 관리자
                   </span>
                 {% elif u.role == Role.GOLD %}
                   <span class="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full text-xs font-semibold">
-                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> 1 (GOLD)
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> 골드
                   </span>
                 {% else %}
                   <span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full text-xs font-semibold">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> 0 (USER)
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> 일반
                   </span>
                 {% endif %}
               </td>
