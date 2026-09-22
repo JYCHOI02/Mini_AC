@@ -9,12 +9,13 @@
 
 실행:  python app.py   →  http://localhost:5000
 """
-from flask import Flask
+from flask import Flask, jsonify, request
 from sqlalchemy import inspect, text
 
 from config import Config
 from controllers import all_blueprints
 from extensions import db, jwt, login_manager
+from models import BlockedIP
 
 
 def _ensure_schema():
@@ -33,11 +34,25 @@ def _ensure_schema():
       if name not in cols:
         conn.execute(text(ddl))
 
+def _client_ip():
+    """프록시(n8n·nginx) 뒤면 X-Forwarded-For 첫 홉, 아니면 remote_addr.
+    (랩 한정 — 실서비스는 신뢰 프록시 목록으로 검증해야 스푸핑을 막는다.)"""
+    xff = request.headers.get('X-Forwarded-For', '')
+    return xff.split(',')[0].strip() if xff else (request.remote_addr or '')
 
 def create_app(config_class=Config):
   app = Flask(__name__)
   app.config.from_object(config_class)
 
+  @app.before_request
+  def _block_ip_guard():
+        # 관리자 API 는 예외 — 운영자·n8n 이 차단/해제를 계속 하려면 필수(자기 차단으로 복구 불능 방지)
+        if request.path.startswith('/api/admin'):
+            return None
+        ip = _client_ip()
+        if ip and db.session.get(BlockedIP, ip):
+            return jsonify({'msg': '차단된 IP 입니다(관리자에게 문의).', 'ip': ip, 'blocked': True}), 403
+        return None
   # 확장 초기화
   db.init_app(app)
   jwt.init_app(app)
@@ -58,3 +73,4 @@ app = create_app()
 
 if __name__ == '__main__':
   app.run(debug=True, host='0.0.0.0', port=5000)
+

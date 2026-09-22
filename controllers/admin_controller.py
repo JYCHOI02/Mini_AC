@@ -13,7 +13,7 @@ from flask_login import current_user as login_user
 from flask_jwt_extended import get_jwt_identity, verify_jwt_in_request
 
 from extensions import db
-from models import SecurityEvent, User
+from models import BlockedIP, SecurityEvent, User
 from models.user import Role, ROLE_NAMES, NAME_TO_ROLE
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
@@ -171,3 +171,21 @@ def revoke_role():
   return jsonify({'msg': '권한 회수 완료', 'username': username,
                   'old_role': old_role_name, 'new_role': 'user', 'revoked': True,
                   'event_id': ev.id, 'revoked_by': actor}), 200
+
+# controllers/admin_controller.py — @admin_required (X-API-Key 또는 admin JWT)
+@admin_bp.route('/block', methods=['POST'])
+@admin_required
+def block_ip():
+    d = request.get_json(silent=True) or {}
+    ip = (d.get('ip') or d.get('src_ip') or '').strip()
+    if not ip: return jsonify({'msg': 'ip(또는 src_ip) 는 필수입니다.'}), 400
+    actor = getattr(request, 'actor', 'unknown')
+    if not db.session.get(BlockedIP, ip):                        # 멱등: 이미 있으면 changed:false
+        db.session.add(BlockedIP(ip=ip, reason=(d.get('reason') or f'자동 차단 by {actor}')[:200], blocked_by=actor))
+        ev = SecurityEvent(student=(d.get('student') or actor)[:50], src_ip=ip,
+            fail_count=int(d.get('fail_count') or 0), decision='deny', severity=d.get('severity','High'),
+            reason=(d.get('reason') or f'IP 실차단: {ip}')[:200], users='', source=d.get('source','ip-guard'))
+        db.session.add(ev); db.session.commit()
+        return jsonify({'msg':'IP 차단 완료','ip':ip,'blocked':True,'changed':True,'event_id':ev.id}), 200
+    return jsonify({'msg':'이미 차단된 IP','ip':ip,'blocked':True,'changed':False}), 200
+# /unblock: BlockedIP 삭제  ·  GET /blocked: 목록
