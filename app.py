@@ -34,6 +34,14 @@ def _ensure_schema():
       if name not in cols:
         conn.execute(text(ddl))
 
+    try:
+      conn.execute(text("UPDATE users SET role = '2' WHERE role = 'admin'"))
+      conn.execute(text("UPDATE users SET role = '1' WHERE role = 'gold'"))
+      conn.execute(text("UPDATE users SET role = '0' WHERE role = 'user' OR role IS NULL OR role = ''"))
+      conn.execute(text("ALTER TABLE users MODIFY COLUMN role INT NOT NULL DEFAULT 0"))
+    except Exception:
+      pass
+
 def _client_ip():
     """프록시(n8n·nginx) 뒤면 X-Forwarded-For 첫 홉, 아니면 remote_addr.
     (랩 한정 — 실서비스는 신뢰 프록시 목록으로 검증해야 스푸핑을 막는다.)"""

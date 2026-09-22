@@ -3,6 +3,7 @@ from flask_login import login_user, logout_user, login_required
 from flask_jwt_extended import create_access_token
 from models.user import User, Role
 from extensions import db
+from .gelf import send_gelf
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
@@ -62,6 +63,17 @@ def login():
             return redirect(url_for('cafe.index'))
 
         # 2. 로그인 실패 (아이디 또는 비밀번호 불일치 시)
+        # 클라이언트 IP 추출 (프록시/Postman X-Forwarded-For 우선)
+        xff = request.headers.get('X-Forwarded-For', '')
+        src_ip = xff.split(',')[0].strip() if xff else (request.remote_addr or '127.0.0.1')
+
+        # Graylog로 로그인 실패 GELF 로그 전송
+        send_gelf(f"failed login for '{username}' from {src_ip}",
+                  rule='login-buteforce',
+                  username=username or '(unknown)',
+                  src_ip=src_ip,
+                  count=1)
+
         if request.is_json:
             return jsonify({'message': '아이디 또는 비밀번호가 올바르지 않습니다.'}), 401
 

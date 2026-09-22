@@ -188,4 +188,30 @@ def block_ip():
         db.session.add(ev); db.session.commit()
         return jsonify({'msg':'IP 차단 완료','ip':ip,'blocked':True,'changed':True,'event_id':ev.id}), 200
     return jsonify({'msg':'이미 차단된 IP','ip':ip,'blocked':True,'changed':False}), 200
-# /unblock: BlockedIP 삭제  ·  GET /blocked: 목록
+# [테스트용 코드] 차단된 IP 목록 조회 및 해제 API
+@admin_bp.route('/blocked', methods=['GET'])  # [테스트용 코드]
+@admin_required  # [테스트용 코드]
+def list_blocked_ips():  # [테스트용 코드]
+    """차단된 IP 목록 조회 (테스트용 코드)"""
+    rows = BlockedIP.query.order_by(BlockedIP.blocked_at.desc()).all()  # [테스트용 코드]
+    return jsonify({  # [테스트용 코드]
+        'count': len(rows),  # [테스트용 코드]
+        'blocked_ips': [row.to_dict() for row in rows]  # [테스트용 코드]
+    }), 200  # [테스트용 코드]
+
+
+@admin_bp.route('/unblock', methods=['POST'])  # [테스트용 코드]
+@admin_required  # [테스트용 코드]
+def unblock_ip():  # [테스트용 코드]
+    """차단된 IP 해제 (테스트용 코드)"""
+    d = request.get_json(silent=True) or {}  # [테스트용 코드]
+    ip = (d.get('ip') or d.get('src_ip') or '').strip()  # [테스트용 코드]
+    if not ip:  # [테스트용 코드]
+        return jsonify({'msg': 'ip(또는 src_ip) 는 필수입니다.'}), 400  # [테스트용 코드]
+
+    record = db.session.get(BlockedIP, ip)  # [테스트용 코드]
+    if record:  # [테스트용 코드]
+        db.session.delete(record)  # [테스트용 코드]
+        db.session.commit()  # [테스트용 코드]
+        return jsonify({'msg': 'IP 차단 해제 완료', 'ip': ip, 'unblocked': True, 'changed': True}), 200  # [테스트용 코드]
+    return jsonify({'msg': '차단 목록에 없는 IP입니다.', 'ip': ip, 'unblocked': False, 'changed': False}), 200  # [테스트용 코드]
