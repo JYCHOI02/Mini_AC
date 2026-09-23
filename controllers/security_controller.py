@@ -9,7 +9,7 @@ from flask import Blueprint, current_app, jsonify, request
 from werkzeug.security import generate_password_hash
 
 from extensions import db
-from models import Post, SecurityEvent, User
+from models import BlockedIP, Post, SecurityEvent, User
 
 security_bp = Blueprint('security', __name__, url_prefix='/api/security')
 
@@ -48,17 +48,21 @@ def _create_security_post(ev):
 @require_api_key
 def create_security_event():
   data = request.get_json(silent=True) or {}      # JSON 아니어도 500 대신 400
+  #student = (data.get('student') or data.get('blocked_by') or 'lsy').strip()
+  #src_ip = (data.get('src_ip') or data.get('ip') or '').strip()
+  #decision = data.get('decision')
   student = (data.get('student') or '').strip()
   src_ip = data.get('src_ip')
   decision = data.get('decision')
   if not student or not src_ip or decision not in ('allow', 'deny'):
     return jsonify({'msg': 'student, src_ip, decision(allow|deny) 은 필수입니다.'}), 400
 
+  reason_text = data.get('reason') or data.get('title')
   ev = SecurityEvent(
       student=student[:50], src_ip=src_ip,
       fail_count=int(data.get('fail_count') or 0), decision=decision,
-      severity=data.get('severity', 'Low'), reason=data.get('reason'),
-      users=data.get('users'), last_seen=data.get('last_seen'),
+      severity=data.get('severity', 'Low'), reason=reason_text,
+      users=data.get('users') or data.get('username'), last_seen=data.get('last_seen'),
       window_min=data.get('window_min'),
       source=data.get('source', 'login_guard'),
       generated_at=data.get('generated_at'),
@@ -67,10 +71,14 @@ def create_security_event():
   db.session.flush()                              # ev.id 확보
 
   post_id = None
-  if decision == 'deny' and current_app.config.get('AUTO_POST_ON_DENY'):
-    post_id = _create_security_post(ev)
+  if decision == 'deny':
+    if src_ip and src_ip not in ('0.0.0.0', '127.0.0.1') and not db.session.get(BlockedIP, src_ip):
+      block_reason = reason_text or f"보안 이벤트 차단({ev.severity}): {ev.source}"
+      db.session.add(BlockedIP(ip=src_ip, reason=block_reason[:200], blocked_by=student or 'security_guard'))
+    if current_app.config.get('AUTO_POST_ON_DENY'):
+      post_id = _create_security_post(ev)
 
-  db.session.commit()                             # 이벤트+공지글을 한 트랜잭션으로
+  db.session.commit()                             # 이벤트+공지글+차단을 한 트랜잭션으로
   return jsonify({'id': ev.id, 'student': ev.student,
                   'decision': ev.decision, 'post_id': post_id}), 201
 

@@ -172,46 +172,68 @@ def revoke_role():
                   'old_role': old_role_name, 'new_role': 'user', 'revoked': True,
                   'event_id': ev.id, 'revoked_by': actor}), 200
 
-# controllers/admin_controller.py — @admin_required (X-API-Key 또는 admin JWT)
 @admin_bp.route('/block', methods=['POST'])
 @admin_required
 def block_ip():
-    d = request.get_json(silent=True) or {}
-    ip = (d.get('ip') or d.get('src_ip') or '').strip()
-    if not ip: return jsonify({'msg': 'ip(또는 src_ip) 는 필수입니다.'}), 400
-    actor = getattr(request, 'actor', 'unknown')
-    if not db.session.get(BlockedIP, ip):                        # 멱등: 이미 있으면 changed:false
-        db.session.add(BlockedIP(ip=ip, reason=(d.get('reason') or f'자동 차단 by {actor}')[:200], blocked_by=actor))
-        ev = SecurityEvent(student=(d.get('student') or actor)[:50], src_ip=ip,
-            fail_count=int(d.get('fail_count') or 0), decision='deny', severity=d.get('severity','High'),
-            reason=(d.get('reason') or f'IP 실차단: {ip}')[:200], users='', source=d.get('source','ip-guard'))
-        db.session.add(ev); db.session.commit()
-        return jsonify({'msg':'IP 차단 완료','ip':ip,'blocked':True,'changed':True,'event_id':ev.id}), 200
-    return jsonify({'msg':'이미 차단된 IP','ip':ip,'blocked':True,'changed':False}), 200
-# [테스트용 코드] 차단된 IP 목록 조회 및 해제 API
-@admin_bp.route('/blocked', methods=['GET'])  # [테스트용 코드]
-@admin_required  # [테스트용 코드]
-def list_blocked_ips():  # [테스트용 코드]
-    """차단된 IP 목록 조회 (테스트용 코드)"""
-    rows = BlockedIP.query.order_by(BlockedIP.blocked_at.desc()).all()  # [테스트용 코드]
-    return jsonify({  # [테스트용 코드]
-        'count': len(rows),  # [테스트용 코드]
-        'blocked_ips': [row.to_dict() for row in rows]  # [테스트용 코드]
-    }), 200  # [테스트용 코드]
+  """공격 IP 실차단(active response) → blocked_ips 에 추가. n8n 이 호출.
+  body: {ip, reason, student, severity}. 이후 그 IP 요청은 미들웨어가 403(관리자 API 제외)."""
+  data = request.get_json(silent=True) or {}
+  ip = (data.get('ip') or data.get('src_ip') or '').strip()
+  if not ip:
+    return jsonify({'msg': 'ip(또는 src_ip) 는 필수입니다.'}), 400
+  actor = getattr(request, 'actor', 'unknown')
+
+  if not db.session.get(BlockedIP, ip):
+    db.session.add(BlockedIP(ip=ip, reason=(data.get('reason') or f'자동 차단 by {actor}')[:200],
+                             blocked_by=actor))
+    ev = SecurityEvent(
+        student=(data.get('student') or actor)[:50],
+        src_ip=ip,
+        fail_count=int(data.get('fail_count') or 0),
+        decision='deny',
+        severity=data.get('severity', 'High'),
+        reason=(data.get('reason') or f'IP 실차단: {ip}')[:200],
+        users='-',
+        source=data.get('source', 'ip-guard'),
+        generated_at=data.get('generated_at'),
+    )
+    db.session.add(ev)
+    db.session.commit()
+    return jsonify({
+        'msg': 'IP 차단 완료',
+        'ip': ip,
+        'blocked': True,
+        'changed': True,
+        'event_id': ev.id,
+        'blocked_by': actor,
+    }), 200
+  return jsonify({'msg': '이미 차단된 IP', 'ip': ip, 'blocked': True, 'changed': False}), 200
 
 
-@admin_bp.route('/unblock', methods=['POST'])  # [테스트용 코드]
-@admin_required  # [테스트용 코드]
-def unblock_ip():  # [테스트용 코드]
-    """차단된 IP 해제 (테스트용 코드)"""
-    d = request.get_json(silent=True) or {}  # [테스트용 코드]
-    ip = (d.get('ip') or d.get('src_ip') or '').strip()  # [테스트용 코드]
-    if not ip:  # [테스트용 코드]
-        return jsonify({'msg': 'ip(또는 src_ip) 는 필수입니다.'}), 400  # [테스트용 코드]
+@admin_bp.route('/unblock', methods=['POST'])
+@admin_required
+def unblock_ip():
+  """IP 차단 해제. body: {ip}"""
+  data = request.get_json(silent=True) or {}
+  ip = (data.get('ip') or data.get('src_ip') or '').strip()
+  if not ip:
+    return jsonify({'msg': 'ip 는 필수입니다.'}), 400
+  row = db.session.get(BlockedIP, ip)
+  if row:
+    db.session.delete(row)
+    db.session.commit()
+  return jsonify({
+      'msg': '차단 해제 완료',
+      'ip': ip,
+      'blocked': False,
+      'unblocked_by': getattr(request, 'actor', 'unknown'),
+  }), 200
 
-    record = db.session.get(BlockedIP, ip)  # [테스트용 코드]
-    if record:  # [테스트용 코드]
-        db.session.delete(record)  # [테스트용 코드]
-        db.session.commit()  # [테스트용 코드]
-        return jsonify({'msg': 'IP 차단 해제 완료', 'ip': ip, 'unblocked': True, 'changed': True}), 200  # [테스트용 코드]
-    return jsonify({'msg': '차단 목록에 없는 IP입니다.', 'ip': ip, 'unblocked': False, 'changed': False}), 200  # [테스트용 코드]
+
+@admin_bp.route('/blocked', methods=['GET'])
+@admin_required
+def list_blocked():
+  """차단된 IP 목록."""
+  rows = BlockedIP.query.order_by(BlockedIP.blocked_at.desc()).all()
+  dicts = [r.to_dict() for r in rows]
+  return jsonify({'count': len(rows), 'blocked': dicts, 'blocked_ips': dicts})

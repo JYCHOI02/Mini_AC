@@ -120,6 +120,12 @@
 
         <!-- 로그인 폼 -->
         <form id="login-form" onsubmit="handleFormLogin(event)" class="space-y-4">
+          <!-- 동적 에러/차단 안내 배너 -->
+          <div id="login-error-alert" class="hidden p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl flex items-start gap-3 shadow-sm">
+            <span class="p-1 bg-rose-100 rounded-lg text-rose-600 shrink-0 mt-0.5">🚫</span>
+            <p id="login-error-msg" class="text-xs text-rose-700 leading-relaxed font-semibold"></p>
+          </div>
+
           <div>
             <label class="block text-sm font-semibold text-gray-700 mb-1.5" for="login-username">아이디</label>
             <input type="text" id="login-username" required placeholder="새로 로그인할 아이디"
@@ -175,6 +181,10 @@
         return;
       }
 
+      const alertBox = document.getElementById('login-error-alert');
+      const msgEl = document.getElementById('login-error-msg');
+      if (alertBox) alertBox.classList.add('hidden');
+
       btn.disabled = true;
       btn.classList.add('opacity-75', 'cursor-not-allowed');
 
@@ -201,11 +211,21 @@
             window.location.href = '/';
           }
         } else {
-          alert(data.message || '로그인에 실패했습니다.');
+          const errMsg = data.message || data.msg || '로그인에 실패했습니다.';
+          alert(errMsg);
+          if (alertBox && msgEl) {
+            msgEl.textContent = errMsg;
+            alertBox.classList.remove('hidden');
+          }
         }
       } catch (err) {
         console.error('로그인 에러:', err);
-        alert('서버와 통신 중 오류가 발생했습니다.');
+        const errMsg = '서버와 통신 중 오류가 발생했습니다.';
+        alert(errMsg);
+        if (alertBox && msgEl) {
+          msgEl.textContent = errMsg;
+          alertBox.classList.remove('hidden');
+        }
       } finally {
         btn.disabled = false;
         btn.classList.remove('opacity-75', 'cursor-not-allowed');

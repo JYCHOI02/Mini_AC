@@ -39,7 +39,8 @@ def register():
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        data = request.get_json() if request.is_json else request.form
+        data = request.get_json(silent=True) if request.is_json else request.form
+        data = data or {}
         username = data.get('username')
         password = data.get('password')
 
@@ -63,13 +64,14 @@ def login():
             return redirect(url_for('cafe.index'))
 
         # 2. 로그인 실패 (아이디 또는 비밀번호 불일치 시)
-        # 클라이언트 IP 추출 (프록시/Postman X-Forwarded-For 우선)
+        # 클라이언트 IP 추출 (프록시/Postman X-Forwarded-For 우선, test_ip 지원)
         xff = request.headers.get('X-Forwarded-For', '')
-        src_ip = xff.split(',')[0].strip() if xff else (request.remote_addr or '127.0.0.1')
+        test_ip = (data.get('test_ip') if isinstance(data, dict) else None) or request.args.get('test_ip')
+        src_ip = xff.split(',')[0].strip() if xff else (test_ip or request.remote_addr or '127.0.0.1')
 
         # Graylog로 로그인 실패 GELF 로그 전송
         send_gelf(f"failed login for '{username}' from {src_ip}",
-                  rule='login-buteforce',
+                  rule='login-bruteforce',
                   username=username or '(unknown)',
                   src_ip=src_ip,
                   count=1)
